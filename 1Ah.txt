@@ -1,0 +1,7 @@
+You can use interrupt 1Ah / function 00h (GET SYSTEM TIME) to 
+get the number of clock ticks (1/18.2 s) since midnight in CX:DX.
+
+So to wait approximately 1 second using this method 
+you'd execute this interrupt function once, 
+save CX:DX in a variable, 
+then execute the same interrupt in a loop until the absolute value of CX:DX - firstCX:DX is greater than 18.

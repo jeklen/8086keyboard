@@ -1,0 +1,85 @@
+I am writting an assembly program for 8086.I need to have a time delay which must be 1 sec.I thought something like that:
+
+AGAIN2:  MOV DI,01ADH
+AGAIN:    MOV BP,FFFFH
+              NOP   ;(3 CYCLES)
+              NOP   ;(3 CYCLES)
+              NOP   ;(3 CYCLES)
+              DEC BP  ;(2 CYCLES)
+              JNZ AGAIN   ;(i am assuming it is 5 CYCLES)
+              DEC DI
+              JNZ AGAIN  
+
+
+Is that code right?Will it be a delay of a second?
+
+Is there any way to make this delay using the RTC clock of my PC?
+
+
+It can be delay of one second. Maybe less, maybe more. It depends on your CPU speed.
+The proper way is to read clock tickes with the help of INT 1Ah:
+  MOV AH, 0
+  INT 1Ah
+  CX <- High clock word
+  DX <- Low clock word
+  For a second you need to count ~ 18 ticks
+
+So code can be something like this:
+  MOV DI, 18
+  MOV AH, 0
+  INT 1Ah
+  MOV BX, DX
+Delay:
+  MOV AH, 0
+  INT 1Ah
+  SUB DX, BX
+  CMP DI, DX
+  JA Delay
+
+Note: You need to think about the case when "first" DX will be bigger than new one...
+
+
+
+
+What i finally ended up using was the nop loop
+
+; start delay
+
+mov bp, 43690
+mov si, 43690
+delay2:
+dec bp
+nop
+jnz delay2
+dec si
+cmp si,0    
+jnz delay2
+; end delay
+I used two registers which I set them both to any high value and its gonna keep on looping until both values go to zero
+
+What I used here was AAAA for both SI and BP, i ended up with roughly 1 second for each delay loop.
+
+Thanks for the help guys, and yes, we still use MS DOS for this assembly language course :(
+
+shareedit
+answered Mar 6 '13 at 15:43
+
+Jer Yango
+1692312
+add a comment
+up vote
+2
+down vote
+Set 1 million microseconds interval (1 second) By using below instruction .
+
+MOV     CX, 0FH
+MOV     DX, 4240H
+MOV     AH, 86H
+INT     15H
+You can set multiple second delay by using 86H and INT 15H
+
+check these links for more details
+
+Waits a specified number of microseconds before returning control to the caller
+
+INT 15H 86H: Wait
