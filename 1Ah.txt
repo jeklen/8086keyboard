@@ -1,3 +1,8 @@
+INT 1Ah/AH = 00h - get system time
+	return 
+		CX:DX = number of clock ticks since midnight
+		
+
 You can use interrupt 1Ah / function 00h (GET SYSTEM TIME) to 
 get the number of clock ticks (1/18.2 s) since midnight in CX:DX.
 
