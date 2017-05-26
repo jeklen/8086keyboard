@@ -1,0 +1,94 @@
+INT 27h
+Terminate and Stay Resident
+Input:
+DS:DX = address of byte beyond the part that is to remain resident
+Output:
+none
+Once terminated, a TSR program is not active
+It must be activated by some external activity, such as a certain key combination or by the timer
+The advantage of a TRS program is that it may be activated while some other program is running
+Our program will become active when the Ctrl and right shift keys are pressed
+To keep the program small, it will not update the time
+The program has two parts:
+an initialization part that sets up the interrupt vector, and
+the interrupt routine itself
+The procedure INITIALIZE initializes the interrupt vector 9 (keyboard interrupt) with the address of the interrupt procedure MAIN and then calls INT 27h to terminate
+The address is passed to INT 27h is the beginning address of the INITIALIZE procedure
+this is possible because the instructions are no longer needed
+The procedure INITIALIZE is shown in the program listing INITLZE.ASM
+There are a number of ways for the interrupt routine to detect a particular key combination
+The simplest way is to detect the control and shift keys by checking the keyboard flags
+When activated by a keystroke, the interrupt routine calls the old keyboard interrupt routine to handle the key input
+To detect the control and shift keys, a program can examine the keyboard flags at the BIOS data area 0000:0417h or use INT 16h, function 2
+2．程序驻留结束中断INT 27H
+
+
+INT 27H: Terminate but Stay Resident
+
+                                                         Compatibility: 1.0+ 
+ Expects: DX    last addr+1 to keep resident
+                (note: DX is an offset from the PSP segment)
+          ──────────────────────────────────────────────────────────────────
+ Returns: none  (not applicable)
+          ──────────────────────────────────────────────────────────────────
+    Info: This service terminates the caller, leaving a portion of memory
+          allocated and resident in memory.  Subsequent programs will not
+          overwrite the code or data left in memory.  See TSR for a list of
+          related topics.
+
+          INT 27H is the traditional method used to install interrupt
+          service routines and user-definable data tables, but it is
+          ◄superseded► by DOS Fn 31H (KEEP).  That fn provides a way to
+          leave more than 64K resident and it allows you to set an exit
+          code when you terminate.
+
+          INT 27H (and all DOS exit services) restore the vectors for INTs
+          cannot be used to install a permanent Critical Error or
+          Ctrl-Break handler.
+
+See Also: fn 31H (terminate and stay resident)
+          TSR/Popup Functions
+          Program Startup & Exit
+          DOS Functions
+          DOS Interrupts
+
+　
+INT 27H和INT 2OH都是实现退出程序，但它们也有不同，即INT 27H执行中断后，将程序看作COMMAND．COM常驻部分的属性，不会被其它程序调入时覆盖；另外，
+INT 27H入口时，需输入参数到DX中。DS中包含程序最末地址后的第一字节的位移量(段地址在CS中)，即入口参数(DX)=程序最末端地址十1
+例如： MOV DX，OFFSET LAST－INSTRUC
+       INC DX
+       INT 27H
+　
+若驻留程序超过64KB时，则使用DOS系统功能调用的31H号功能调用。其用法：
+       MOV AL，EXITCODE ；出口代码(二进制数表示)
+       MOV DX，PARASIZE ；驻留长度(节数，1节=16个字节)
+       MOV AH，31H      ；中断调用
+       INT 21H
+　
+在AL中存放的出口代码可由功能调用4DH重新检索出来。例如：
+       MOV AH，4DH
+       INT 21H          ；AX中含出口代码
+　
+3．结束当前程序并返回DOS的中断INT 21H的4CH功能调用
+本功能调用将终止当前程序，并把控制权转给调用程序。所有打开的文件，在此时关闭。本中断入口时，可带出口代码，以供4DH功能调用检索。其使用方法：
+       MOU AL，EXITCODE ；出口代码
+       MOV AH，4CH
+       INT 21H
+　
+这种结束程序返回调用程序的中断调用常用在采用下列所示的结构编写的汇编语言源程序中，以实现正确返回。
+  CODE SEGMENT
+       ASSUME CS：CODE，DS：DATA，ES：EDAT，SS：STACK
+MAIN： MOV AX，DATA     ；初始化DS
+       MOV DS，AX
+       MOV AS，EDAT     ；初始化ES
+       MOV ES，AX
+       MOV AX，STACK    ；初始化SS
+       MOV SS，AX
+       MOV SP，OFFSET TOP ；初始化找项
+       (程序正文)
+       MOV AH，4CH      ；返回DOS
+       INT 21H
+  CODE ENDS
+       END MAIN
+	
+4/4        首页        << 上一页        下一页 >>        末页

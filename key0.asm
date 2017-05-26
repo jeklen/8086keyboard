@@ -25,7 +25,7 @@ keyhandler:
 	push bx
     in al, 60h                     ; get key data
     mov bl, al                      ; save it
-    ;mov byte [port60], al
+    mov byte [port60], al
 	mov [port60], al
 
     in al, 61h                     ; keybrd control
