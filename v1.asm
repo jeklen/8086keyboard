@@ -1,93 +1,102 @@
-;通过9号中断，不断获得键盘输入并显示在屏幕上
-;进入循环：
-;1. 10s不接受任何东西
-;2. 10s密码键盘(也就是一个键盘中断，也就是进入9号中断）		
 data segment
-	C	DW	0h
-	;port60	db	0
+
 data ends
 
-stack segment
-	DB	100 DUP(0)
-	TOP	EQU	100
-stack ends
+stackseg segment stack
+	db 400 dup(0)
+	TOP equ 400
+stackseg ends
 
 code segment
-	assume cs:code, ds:data, ss:stack
-	
-Delay Proc Near
+assume cs:code, ds:data, ss:stackseg
+
+delay proc near
 	push dx
 	push cx
 	xor ax, ax
 	int 1ah
 	mov cs:Times, dx
 	mov cs:Times[2], cx
-Read_Time: xor	ax, ax
+  read_time:
+  	mov ah, 01h	;check if a key is pressed
+	int 16h
+	jz notpressed	;zero = no pressed
+  	mov ah, 0
+	int 16h
+	mov dl, al
+	cmp dl, 'z'
+	jnz judgeZ
+	mov dl, 'a'
+	sub dl, 1h
+	cmp dl, 'Z'
+  judgeZ:
+	cmp dl, 'Z'
+	jnz getsecret
+	mov dl, 'A'
+	sub dl, 1h	
+  getsecret:
+	add dl, 1h
+	mov ah, 2h
+	int 21h
+  notpressed:
+	xor ax, ax
 	int 1ah
 	sub dx, cs:Times
 	sbb cx, cs:Times[2]
-	cmp dx, Diadas
-	jb 	Read_Time
+	cmp dx, Diads
+	;jb表示小于则跳转，ja表示大于则跳转
+	jb read_time
 	pop cx
 	pop dx
 	ret
-Times dw	0,0
-Diadas equ 182
-Delay EndP
+Times	dw	0, 0
+delay endp
 ;--------------------------------------------------------
-start:
-	mov ax, data
-	mov ds, ax
-	mov ax, stack
-	mov ss, ax
-	mov sp, TOP
-	
-	;修改中断入口地址
-	cli
-	mov ax, 0
-	mov es, ax				;ES = 0
-	mov bx, 9*4				;BX为中断向量表项地址
-	mov ax, offset keyhandler
-	mov es:[bx], ax			;中断程序入口段偏移
-							;0000:0024H
-	mov ax, seg keyhandler		
-	mov es:[bx+2], ax		;中断程序入口段地址
-	sti
-	
-	;loop for 1 times
-	mov cx, 1
-  Secretkey:
-	call Delay
-	call Delay
-	jnz Secretkey
-Exit_Proc:	mov ah,4ch	;结束程序
-	int 21h
+Diads	equ		182	;延时10s
 
-  keyhandler:
+keyboard proc near
+	push cx
 	push ax
 	push bx
-	in al, 60h			;get key data
-	push ax
-	mov bl, al			;save it
 	
-	in al, 61h			;keyboard control
-	mov ah, al
-	or al, 80h			;disable bit 7
-	out 61h, al			;send it back
-	xchg ah, al			;get original 
-	out 61h, al			;send that back
-	pop ax
-
-	;mov ah, 2h
-	;mov dl, bl
-	;int 21H	
-	cli
-	mov al, 20h			;End of Interrupt
-	out 20h, al
+	mov bx, 3h
+  domore:
+	mov al, 02H ;写OCW1，屏蔽IR5、IR6、IR7中断源
+	out 21h, al	 ;假定这三个中断输入未用,其他开中断
+	call delay
+	
+	mov al, 00H
+	out 21h, al
+	call delay
+	
+	sub bx, 1h
+	jnz domore
 	
 	pop bx
 	pop ax
-	iret
+	pop cx
+	ret
+keyboard endp
+
+start:
+	mov ax, data
+	mov ds, ax
+	mov ax, stackseg
+	mov ss, ax
+	mov sp, TOP
 	
+	mov al, 13h
+	out 20h, al
+	mov al, 8h
+	out 21h, al
+	mov al, 01h
+	out 21h, al
+
+	call keyboard
+
+mov ax, 4c00h
+int 21h
+
 code ends
+
 end start
